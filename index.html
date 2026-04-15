@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PillTracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0e0f13;
+      --surface: #16181f;
+      --surface2: #1e2028;
+      --border: #2a2d38;
+      --text: #eeeef0;
+      --text-muted: #7a7d8c;
+      --accent: #c8f060;
+      --accent-dark: #a3cc40;
+      --sidebar-w: 300px;
+      --radius: 16px;
+      --pill-1: #c8f060;
+      --pill-2: #60c8f0;
+      --pill-3: #f060c8;
+      --pill-4: #f0a060;
+      --pill-5: #a060f0;
+      --pill-6: #60f0a0;
+    }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.35s cubic-bezier(.4,0,.2,1), margin-left 0.35s cubic-bezier(.4,0,.2,1);
+      position: relative;
+      z-index: 100;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .sidebar.closed {
+      width: 0;
+      margin-left: 0;
+      border-right: none;
+    }
+    .sidebar-header {
+      padding: 0 24px;
+      height: 65px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .logo {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    .logo span { color: var(--text-muted); font-style: italic; }
+    .sidebar-label {
+      font-size: 10px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 20px 24px 8px;
+    }
+    .tracker-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 12px;
+    }
+    .tracker-list::-webkit-scrollbar { width: 4px; }
+    .tracker-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    .tracker-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      margin-bottom: 4px;
+      position: relative;
+    }
+    .tracker-item:hover { background: var(--surface2); }
+    .tracker-item.active { background: var(--surface2); }
+    .tracker-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 20%; bottom: 20%;
+      width: 3px;
+      border-radius: 99px;
+      background: var(--item-color, var(--accent));
+    }
+    .tracker-icon {
+      width: 38px; height: 38px;
+      border-radius: 10px;
+      background: color-mix(in srgb, var(--item-color, var(--accent)) 15%, transparent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .tracker-info { flex: 1; min-width: 0; }
+    .tracker-name {
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .tracker-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+    .tracker-progress-mini {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--item-color, var(--accent));
+    }
+    .delete-btn {
+      opacity: 0;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 4px;
+      border-radius: 6px;
+      font-size: 14px;
+      transition: opacity 0.2s, color 0.2s;
+    }
+    .tracker-item:hover .delete-btn { opacity: 1; }
+    .delete-btn:hover { color: #f06060; }
+
+    .add-tracker-btn {
+      margin: 12px;
+      padding: 13px;
+      border-radius: 12px;
+      border: 1.5px dashed var(--border);
+      background: none;
+      color: var(--text-muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .add-tracker-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 5%, transparent);
+    }
+
+    /* ── MAIN ── */
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+    }
+    .topbar {
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      height: 65px;
+      flex-shrink: 0;
+    }
+    .menu-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      transition: color 0.2s, background 0.2s;
+    }
+    .menu-btn:hover { color: var(--text); background: var(--surface2); }
+    .menu-btn span {
+      display: block;
+      width: 20px; height: 2px;
+      background: currentColor;
+      border-radius: 99px;
+      transition: transform 0.3s, opacity 0.3s;
+    }
+    .topbar-title {
+      font-family: 'DM Serif Display', serif;
+      font-size: 20px;
+    }
+    .topbar-date {
+      margin-left: auto;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
+      gap: 0;
+    }
+    .content::-webkit-scrollbar { width: 4px; }
+    .content::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* ── EMPTY STATE ── */
+    .empty-state {
+      text-align: center;
+      animation: fadeUp 0.5s ease;
+      margin: auto;
+      padding: 60px 0;
+    }
+    .empty-icon {
+      font-size: 72px;
+      margin-bottom: 20px;
+      filter: grayscale(0.3);
+    }
+    .empty-state h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 28px;
+      margin-bottom: 10px;
+    }
+    .empty-state p { color: var(--text-muted); font-size: 15px; }
+
+    /* ── TRACKER VIEW ── */
+    .tracker-view {
+      width: 100%;
+      max-width: 560px;
+      animation: fadeUp 0.4s ease;
+      padding-bottom: 20px;
+    }
+    .tracker-hero {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+    .tracker-hero::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: 50%;
+      transform: translateX(-50%);
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: color-mix(in srgb, var(--hero-color, var(--accent)) 12%, transparent);
+      filter: blur(40px);
+      pointer-events: none;
+    }
+    .hero-icon { font-size: 56px; margin-bottom: 12px; }
+    .hero-name {
+      font-family: 'DM Serif Display', serif;
+      font-size: 32px;
+      margin-bottom: 4px;
+    }
+    .hero-sub { color: var(--text-muted); font-size: 14px; margin-bottom: 32px; }
+
+    .dose-display {
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 32px;
+    }
+    .dose-taken {
+      font-family: 'DM Serif Display', serif;
+      font-size: 80px;
+      line-height: 1;
+      color: var(--hero-color, var(--accent));
+      transition: transform 0.15s, color 0.3s;
+    }
+    .dose-taken.pop { animation: pop 0.3s cubic-bezier(.3,1.5,.5,1); }
+    .dose-sep { font-size: 48px; color: var(--border); margin-bottom: 8px; }
+    .dose-goal { font-size: 48px; color: var(--text-muted); margin-bottom: 8px; }
+
+    .progress-ring {
+      position: absolute;
+      top: 20px; right: 20px;
+    }
+    .progress-ring circle { transition: stroke-dashoffset 0.5s ease; }
+
+    .take-btn {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: none;
+      background: var(--hero-color, var(--accent));
+      color: #0e0f13;
+      font-size: 32px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 0 30px color-mix(in srgb, var(--hero-color, var(--accent)) 40%, transparent);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .take-btn:hover { transform: scale(1.08); }
+    .take-btn:active { transform: scale(0.95); }
+    .take-btn:disabled {
+      background: var(--surface2);
+      color: var(--text-muted);
+      box-shadow: none;
+      cursor: not-allowed;
+    }
+    .take-btn-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .take-label { font-size: 12px; color: var(--text-muted); letter-spacing: 0.5px; }
+
+    .dots-row {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+    .dose-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      border: 2px solid var(--hero-color, var(--accent));
+      transition: background 0.3s, transform 0.2s;
+    }
+    .dose-dot.filled {
+      background: var(--hero-color, var(--accent));
+      transform: scale(1.15);
+    }
+
+    /* history */
+    .history-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+    }
+    .history-title {
+      font-size: 12px;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+    .history-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
+      height: 80px;
+    }
+    .history-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      height: 100%;
+      justify-content: flex-end;
+    }
+    .history-bar-wrap {
+      flex: 1;
+      width: 100%;
+      display: flex;
+      align-items: flex-end;
+    }
+    .history-bar {
+      width: 100%;
+      border-radius: 6px 6px 0 0;
+      background: color-mix(in srgb, var(--hero-color, var(--accent)) 25%, transparent);
+      transition: height 0.5s ease, background 0.3s;
+      min-height: 4px;
+    }
+    .history-bar.full {
+      background: var(--hero-color, var(--accent));
+    }
+    .history-day { font-size: 10px; color: var(--text-muted); }
+    .history-count { font-size: 11px; font-weight: 600; }
+
+    /* ── MODALS ── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 200;
+      display: flex; align-items: center; justify-content: center;
+      animation: fadeIn 0.2s ease;
+    }
+    .overlay.hidden { display: none; }
+
+    .modal {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px;
+      width: 90%;
+      max-width: 420px;
+      animation: slideUp 0.3s cubic-bezier(.3,1,.4,1);
+    }
+    .modal h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 24px;
+      margin-bottom: 6px;
+    }
+    .modal p { color: var(--text-muted); font-size: 14px; margin-bottom: 24px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 12px; color: var(--text-muted); margin-bottom: 6px; display: block; letter-spacing: 0.5px; }
+    .form-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-input:focus { border-color: var(--accent); }
+
+    .color-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    .color-opt {
+      width: 100%; aspect-ratio: 1;
+      border-radius: 8px;
+      border: 2.5px solid transparent;
+      cursor: pointer;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+    .color-opt:hover { transform: scale(1.1); }
+    .color-opt.selected { border-color: #fff; transform: scale(1.1); }
+
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+    }
+    .icon-opt {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      cursor: pointer;
+      font-size: 20px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .icon-opt:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, transparent); }
+    .icon-opt.selected { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, transparent); }
+
+    .dose-question {
+      text-align: center;
+      padding: 8px 0 28px;
+    }
+    .dose-question h2 {
+      font-family: 'DM Serif Display', serif;
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+    .dose-counter {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      margin: 24px 0;
+    }
+    .counter-btn {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 22px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .counter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .counter-val {
+      font-family: 'DM Serif Display', serif;
+      font-size: 56px;
+      color: var(--accent);
+      min-width: 60px;
+      text-align: center;
+    }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 8px; }
+    .btn {
+      flex: 1;
+      padding: 13px;
+      border-radius: 12px;
+      border: none;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: var(--accent); color: #0e0f13; }
+    .btn-primary:hover { background: var(--accent-dark); }
+    .btn-secondary { background: var(--surface2); color: var(--text-muted); }
+    .btn-secondary:hover { color: var(--text); }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pop {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+    @keyframes confetti {
+      0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+      100% { transform: translateY(-80px) rotate(360deg); opacity: 0; }
+    }
+
+    .confetti-piece {
+      position: absolute;
+      width: 8px; height: 8px;
+      border-radius: 2px;
+      animation: confetti 0.8s ease forwards;
+      pointer-events: none;
+    }
+
+    .completed-badge {
+      background: color-mix(in srgb, var(--hero-color, var(--accent)) 15%, transparent);
+      color: var(--hero-color, var(--accent));
+      border-radius: 99px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      display: inline-block;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 640px) {
+      .sidebar { position: fixed; height: 100vh; }
+      .sidebar.closed { transform: translateX(calc(-1 * var(--sidebar-w))); }
+      .content { padding: 20px; }
+      .tracker-hero { padding: 28px 20px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div class="logo">Pill<span>Tracker</span></div>
+  </div>
+  <div class="sidebar-label">Meus Comprimidos</div>
+  <div class="tracker-list" id="trackerList"></div>
+  <button class="add-tracker-btn" onclick="openCreateModal()">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      <path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    Novo Comprimido
+  </button>
+</aside>
+
+<!-- MAIN -->
+<main class="main" id="main">
+  <div class="topbar">
+    <button class="menu-btn" id="menuBtn" onclick="toggleSidebar()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+    <span class="topbar-title" id="topbarTitle">Início</span>
+    <span class="topbar-date" id="topbarDate"></span>
+  </div>
+  <div class="content" id="content">
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">💊</div>
+      <h2>Nenhum comprimido</h2>
+      <p>Clique em "Novo Comprimido" na barra lateral<br>para começar a rastrear suas doses.</p>
+    </div>
+    <div class="tracker-view" id="trackerView" style="display:none"></div>
+  </div>
+</main>
+
+<!-- MODAL: CRIAR TRACKER -->
+<div class="overlay hidden" id="createOverlay">
+  <div class="modal">
+    <h2>Novo Comprimido</h2>
+    <p>Configure como deseja rastrear seu medicamento</p>
+
+    <div class="form-group">
+      <label class="form-label">NOME DO COMPRIMIDO</label>
+      <input type="text" class="form-input" id="newName" placeholder="Ex: Vitamina D, Ômega 3..."/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">ÍCONE</label>
+      <div class="icon-grid" id="iconGrid"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">COR</label>
+      <div class="color-grid" id="colorGrid"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeCreateModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveTracker()">Continuar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: QUANTAS POR DIA -->
+<div class="overlay hidden" id="doseOverlay">
+  <div class="modal">
+    <div class="dose-question">
+      <h2>Quantos tomará por dia?</h2>
+      <p>Defina a meta diária para <strong id="doseTrackerName"></strong></p>
+      <div class="dose-counter">
+        <button class="counter-btn" onclick="changeDose(-1)">−</button>
+        <div class="counter-val" id="doseVal">1</div>
+        <button class="counter-btn" onclick="changeDose(1)">+</button>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="closeDoseModal()">Voltar</button>
+      <button class="btn btn-primary" onclick="confirmDose()">Confirmar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── CONFIG ─────────────────────────────────────────────────────────────────
+  const API = 'http://localhost:3000/api'; // Troque pelo seu servidor
+  let useAPI = false; // muda para true se backend estiver disponível
+
+  const COLORS = ['#c8f060','#60c8f0','#f060c8','#f0a060','#a060f0','#60f0a0',
+                  '#f06060','#f0e060','#60a0f0','#f09060','#90f060','#c060f0'];
+  const ICONS  = ['💊','🩺','💉','🧬','🫀','🧠','🦷','🦴','👁️','🫁','🩻','💆',
+                  '🌿','🍋','🫐','🧡','⭐','🔬','🧪','💧','🌙','☀️','⚡','🎯'];
+
+  let trackers = [];
+  let activeId = null;
+  let pendingTracker = null;
+  let tempDose = 1;
+  let sidebarOpen = true;
+
+  // ── STORAGE (localStorage fallback) ────────────────────────────────────────
+  function loadLocal() {
+    try { return JSON.parse(localStorage.getItem('pilltracker_v2') || '[]'); } catch { return []; }
+  }
+  function saveLocal() {
+    localStorage.setItem('pilltracker_v2', JSON.stringify(trackers));
+  }
+  function todayKey() { return new Date().toISOString().split('T')[0]; }
+
+  function getToday(tracker) {
+    if (!tracker.logs) tracker.logs = {};
+    return tracker.logs[todayKey()] || 0;
+  }
+  function incrementToday(tracker) {
+    if (!tracker.logs) tracker.logs = {};
+    const k = todayKey();
+    tracker.logs[k] = (tracker.logs[k] || 0) + 1;
+    saveLocal();
+    return tracker.logs[k];
+  }
+
+  // ── INIT ───────────────────────────────────────────────────────────────────
+  async function init() {
+    updateDate();
+    buildColorGrid();
+    buildIconGrid();
+
+    // Tenta usar a API; cai no localStorage se falhar
+    try {
+      const r = await fetch(`${API}/trackers`, { signal: AbortSignal.timeout(2000) });
+      if (r.ok) { useAPI = true; trackers = await r.json(); }
+      else { trackers = loadLocal(); }
+    } catch { trackers = loadLocal(); }
+
+    renderList();
+    if (trackers.length > 0) selectTracker(trackers[0].id);
+  }
+
+  function updateDate() {
+    const d = new Date();
+    const opts = { weekday:'long', day:'numeric', month:'long' };
+    document.getElementById('topbarDate').textContent =
+      d.toLocaleDateString('pt-BR', opts);
+  }
+
+  // ── SIDEBAR ────────────────────────────────────────────────────────────────
+  function toggleSidebar() {
+    sidebarOpen = !sidebarOpen;
+    document.getElementById('sidebar').classList.toggle('closed', !sidebarOpen);
+  }
+
+  // ── RENDER LIST ────────────────────────────────────────────────────────────
+  function renderList() {
+    const list = document.getElementById('trackerList');
+    list.innerHTML = '';
+    const isEmpty = trackers.length === 0;
+    document.getElementById('emptyState').style.display = isEmpty ? 'block' : 'none';
+    document.getElementById('trackerView').style.display = (!isEmpty && activeId) ? 'block' : 'none';
+
+    trackers.forEach(t => {
+      const count = useAPI ? (t.today_count || 0) : getToday(t);
+      const done = count >= t.daily_goal;
+      const item = document.createElement('div');
+      item.className = 'tracker-item' + (t.id === activeId ? ' active' : '');
+      item.style.setProperty('--item-color', t.color);
+      item.dataset.id = t.id;
+      item.innerHTML = `
+        <div class="tracker-icon">${t.icon}</div>
+        <div class="tracker-info">
+          <div class="tracker-name">${t.name}</div>
+          <div class="tracker-meta">Meta: ${t.daily_goal}x/dia</div>
+        </div>
+        <div class="tracker-progress-mini">${done ? '✓' : `${count}/${t.daily_goal}`}</div>
+        <button class="delete-btn" onclick="deleteTracker(${JSON.stringify(t.id)}, event)" title="Remover">✕</button>
+      `;
+      item.addEventListener('click', () => selectTracker(t.id));
+      list.appendChild(item);
+    });
+  }
+
+  // ── SELECT TRACKER ─────────────────────────────────────────────────────────
+  async function selectTracker(id) {
+    activeId = id;
+    const t = trackers.find(x => x.id == id);
+    if (!t) return;
+
+    document.getElementById('topbarTitle').textContent = t.name;
+    document.getElementById('emptyState').style.display = 'none';
+    const view = document.getElementById('trackerView');
+    view.style.display = 'block';
+
+    // history
+    let history = [];
+    if (useAPI) {
+      try {
+        const r = await fetch(`${API}/trackers/${id}/history`);
+        history = await r.json();
+      } catch {}
+    } else {
+      const logs = t.logs || {};
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const k = d.toISOString().split('T')[0];
+        history.push({ log_date: k, count: logs[k] || 0 });
+      }
+    }
+
+    const count = useAPI ? (t.today_count || 0) : getToday(t);
+    const goal = t.daily_goal;
+    const done = count >= goal;
+
+    // dots
+    const dots = Array.from({length: goal}, (_, i) =>
+      `<div class="dose-dot ${i < count ? 'filled' : ''}"></div>`
+    ).join('');
+
+    // history bars
+    const maxCount = Math.max(...history.map(h => h.count), goal, 1);
+    const days = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+    const bars = history.map(h => {
+      const d = new Date(h.log_date + 'T12:00:00');
+      const pct = Math.min((h.count / maxCount) * 100, 100);
+      const full = h.count >= goal;
+      return `
+        <div class="history-col">
+          <div class="history-count" style="color:${full ? t.color : 'var(--text-muted)'}">${h.count||''}</div>
+          <div class="history-bar-wrap">
+            <div class="history-bar ${full ? 'full' : ''}" style="height:${pct}%;--hero-color:${t.color}"></div>
+          </div>
+          <div class="history-day">${days[d.getDay()]}</div>
+        </div>
+      `;
+    }).join('');
+
+    // SVG ring
+    const r = 24, circ = 2 * Math.PI * r;
+    const pct = Math.min(count / goal, 1);
+    const offset = circ - pct * circ;
+
+    view.style.setProperty('--hero-color', t.color);
+    view.innerHTML = `
+      <div class="tracker-hero" style="--hero-color:${t.color}">
+        ${done ? `<div class="completed-badge">✓ Meta atingida hoje!</div>` : ''}
+        <div class="hero-icon">${t.icon}</div>
+        <div class="hero-name">${t.name}</div>
+        <div class="hero-sub">Meta diária: ${goal} comprimido${goal>1?'s':''}</div>
+
+        <svg class="progress-ring" width="60" height="60" viewBox="0 0 60 60">
+          <circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--border)" stroke-width="4"/>
+          <circle cx="30" cy="30" r="${r}" fill="none" stroke="${t.color}" stroke-width="4"
+            stroke-linecap="round" stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
+            transform="rotate(-90 30 30)"/>
+        </svg>
+
+        <div class="dose-display">
+          <div class="dose-taken" id="doseTaken">${count}</div>
+          <div class="dose-sep">/</div>
+          <div class="dose-goal">${goal}</div>
+        </div>
+
+        <div class="dots-row" id="dotsRow">${dots}</div>
+
+        <div class="take-btn-wrap">
+          <button class="take-btn" id="takeBtn" onclick="takePill(${JSON.stringify(id)})" ${done?'disabled':''}>
+            +
+          </button>
+          <div class="take-label">${done ? 'Concluído!' : 'Registrar dose'}</div>
+        </div>
+      </div>
+
+      <div class="history-card">
+        <div class="history-title">Últimos 7 Dias</div>
+        <div class="history-bars">${bars}</div>
+      </div>
+    `;
+
+    // update sidebar active state
+    document.querySelectorAll('.tracker-item').forEach(el => {
+      el.classList.toggle('active', el.dataset.id == id);
+    });
+  }
+
+  // ── TAKE PILL ──────────────────────────────────────────────────────────────
+  async function takePill(id) {
+    const t = trackers.find(x => x.id == id);
+    if (!t) return;
+
+    let newCount;
+    if (useAPI) {
+      try {
+        const r = await fetch(`${API}/trackers/${id}/take`, { method: 'POST' });
+        const data = await r.json();
+        t.today_count = data.count;
+        newCount = data.count;
+      } catch { return; }
+    } else {
+      newCount = incrementToday(t);
+    }
+
+    // animate number
+    const el = document.getElementById('doseTaken');
+    if (el) {
+      el.textContent = newCount;
+      el.classList.remove('pop');
+      void el.offsetWidth;
+      el.classList.add('pop');
+    }
+
+    if (newCount >= t.daily_goal) spawnConfetti();
+
+    renderList();
+    await selectTracker(id);
+  }
+
+  function spawnConfetti() {
+    const hero = document.querySelector('.tracker-hero');
+    if (!hero) return;
+    const colors = ['#c8f060','#60c8f0','#f060c8','#f0a060','#a060f0'];
+    for (let i = 0; i < 12; i++) {
+      const el = document.createElement('div');
+      el.className = 'confetti-piece';
+      el.style.cssText = `
+        left:${30+Math.random()*40}%;
+        bottom:30%;
+        background:${colors[i%colors.length]};
+        animation-delay:${Math.random()*0.3}s;
+        animation-duration:${0.6+Math.random()*0.4}s;
+        transform:rotate(${Math.random()*360}deg);
+      `;
+      hero.appendChild(el);
+      setTimeout(() => el.remove(), 1200);
+    }
+  }
+
+  // ── DELETE ─────────────────────────────────────────────────────────────────
+  async function deleteTracker(id, e) {
+    e.stopPropagation();
+    if (!confirm('Remover este tracker?')) return;
+    if (useAPI) {
+      try { await fetch(`${API}/trackers/${id}`, { method: 'DELETE' }); } catch {}
+    }
+    trackers = trackers.filter(x => x.id != id);
+    saveLocal();
+    if (activeId == id) {
+      activeId = trackers[0]?.id || null;
+      document.getElementById('topbarTitle').textContent = 'Início';
+    }
+    renderList();
+    if (activeId) selectTracker(activeId);
+    else {
+      document.getElementById('trackerView').style.display = 'none';
+      document.getElementById('emptyState').style.display = 'block';
+    }
+  }
+
+  // ── CREATE MODAL ───────────────────────────────────────────────────────────
+  let selColor = COLORS[0], selIcon = ICONS[0];
+
+  function buildColorGrid() {
+    const g = document.getElementById('colorGrid');
+    COLORS.forEach((c, i) => {
+      const el = document.createElement('div');
+      el.className = 'color-opt' + (i===0?' selected':'');
+      el.style.background = c;
+      el.onclick = () => {
+        document.querySelectorAll('.color-opt').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        selColor = c;
+      };
+      g.appendChild(el);
+    });
+  }
+
+  function buildIconGrid() {
+    const g = document.getElementById('iconGrid');
+    ICONS.forEach((ic, i) => {
+      const el = document.createElement('div');
+      el.className = 'icon-opt' + (i===0?' selected':'');
+      el.textContent = ic;
+      el.onclick = () => {
+        document.querySelectorAll('.icon-opt').forEach(x => x.classList.remove('selected'));
+        el.classList.add('selected');
+        selIcon = ic;
+      };
+      g.appendChild(el);
+    });
+  }
+
+  function openCreateModal() {
+    document.getElementById('newName').value = '';
+    document.getElementById('createOverlay').classList.remove('hidden');
+    setTimeout(() => document.getElementById('newName').focus(), 100);
+  }
+  function closeCreateModal() {
+    document.getElementById('createOverlay').classList.add('hidden');
+  }
+
+  function saveTracker() {
+    const name = document.getElementById('newName').value.trim();
+    if (!name) { document.getElementById('newName').focus(); return; }
+    pendingTracker = { name, color: selColor, icon: selIcon };
+    closeCreateModal();
+    openDoseModal(name);
+  }
+
+  // ── DOSE MODAL ─────────────────────────────────────────────────────────────
+  function openDoseModal(name) {
+    tempDose = 1;
+    document.getElementById('doseVal').textContent = 1;
+    document.getElementById('doseTrackerName').textContent = name;
+    document.getElementById('doseOverlay').classList.remove('hidden');
+  }
+  function closeDoseModal() {
+    document.getElementById('doseOverlay').classList.add('hidden');
+    pendingTracker = null;
+  }
+  function changeDose(delta) {
+    tempDose = Math.max(1, Math.min(10, tempDose + delta));
+    document.getElementById('doseVal').textContent = tempDose;
+  }
+
+  async function confirmDose() {
+    if (!pendingTracker) return;
+    const data = { ...pendingTracker, daily_goal: tempDose };
+
+    if (useAPI) {
+      try {
+        const r = await fetch(`${API}/trackers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        const saved = await r.json();
+        saved.today_count = 0;
+        trackers.push(saved);
+      } catch { useAPI = false; fallbackCreate(data); }
+    } else {
+      fallbackCreate(data);
+    }
+
+    document.getElementById('doseOverlay').classList.add('hidden');
+    pendingTracker = null;
+    renderList();
+    selectTracker(trackers[trackers.length - 1].id);
+  }
+
+  function fallbackCreate(data) {
+    const id = Date.now();
+    trackers.push({ ...data, id, logs: {} });
+    saveLocal();
+  }
+
+  // ── KEYBOARD ───────────────────────────────────────────────────────────────
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeCreateModal();
+      closeDoseModal();
+    }
+  });
+
+  // ── START ──────────────────────────────────────────────────────────────────
+  init();
+</script>
+</body>
+</html>
