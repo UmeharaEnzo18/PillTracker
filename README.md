@@ -1,85 +1,90 @@
 # 💊 PillTracker
 
-Rastreador de comprimidos com persistência em **MSSQL** e fallback em `localStorage`.
+Rastreador de comprimidos diários com interface web, persistência em **MSSQL** e fallback automático em `localStorage`.
 
 ---
 
-## 📁 Estrutura
+## 📁 Estrutura do projeto
 
 ```
-pill-tracker/
-├── backend/
-│   ├── server.js       ← API Node.js + Express + MSSQL
-│   └── package.json
+PillTracker/
+├── server.js           ← Backend Node.js + Express
+├── package.json
+├── config.json         ← Gerado automaticamente (não vai pro Git)
+├── .gitignore
 └── frontend/
-    └── index.html      ← Interface completa (abre direto no navegador)
+    └── index.html      ← Interface completa
 ```
 
 ---
 
-## 🚀 Setup do Backend (MSSQL)
+## 🚀 Instalação e execução
+
+### Pré-requisitos
+- [Node.js](https://nodejs.org) (versão LTS recomendada)
+- SQL Server com banco `PillTracker` criado ([ver script SQL](#banco-de-dados))
 
 ### 1. Instale as dependências
 ```bash
-cd backend
 npm install
 ```
 
-### 2. Configure o banco
-Edite as variáveis no topo de `server.js` ou crie um `.env`:
+> A pasta `node_modules` não vai para o repositório. Esse passo é obrigatório após clonar.
 
-```env
-DB_USER=sa
-DB_PASSWORD=SuaSenha123!
-DB_SERVER=localhost
-DB_NAME=PillTracker
-PORT=3000
-```
-
-> O banco `PillTracker` precisa existir. As tabelas são criadas automaticamente.
-
-### 3. Inicie o servidor
+### 2. Inicie o servidor
 ```bash
 npm start
-# ou em desenvolvimento:
-npm run dev
 ```
 
-### 4. Abra o frontend
-Acesse `http://localhost:3000` ou abra `frontend/index.html` diretamente no navegador.
+Na **primeira execução**, o `config.json` é gerado automaticamente com os valores padrão:
+```json
+{
+  "user": "sa",
+  "password": "",
+  "server": "localhost",
+  "database": "PillTracker"
+}
+```
+
+### 3. Acesse o sistema
+Abra o navegador em **http://localhost:3000**
 
 ---
 
-## 🗄️ Tabelas criadas automaticamente
+## ⚙️ Configuração do banco de dados
 
-```sql
--- Trackers de comprimidos
-CREATE TABLE Trackers (
-  id         INT IDENTITY(1,1) PRIMARY KEY,
-  name       NVARCHAR(100) NOT NULL,
-  color      NVARCHAR(20)  NOT NULL,
-  icon       NVARCHAR(10)  NOT NULL,
-  daily_goal INT           NOT NULL DEFAULT 1,
-  created_at DATETIME      DEFAULT GETDATE()
-);
+Se a conexão falhar, um modal será exibido automaticamente na tela com os campos para corrigir as credenciais. Ao salvar, o `config.json` é atualizado e a conexão é refeita sem precisar reiniciar o servidor.
 
--- Registro diário de doses
-CREATE TABLE PillLogs (
-  id         INT IDENTITY(1,1) PRIMARY KEY,
-  tracker_id INT  NOT NULL,
-  log_date   DATE NOT NULL DEFAULT CAST(GETDATE() AS DATE),
-  count      INT  NOT NULL DEFAULT 0,
-  FOREIGN KEY (tracker_id) REFERENCES Trackers(id) ON DELETE CASCADE,
-  CONSTRAINT UQ_tracker_date UNIQUE (tracker_id, log_date)
-);
+Você também pode editar o `config.json` diretamente:
+
+```json
+{
+  "user": "sa",
+  "password": "SuaSenha",
+  "server": "NOME-PC\\INSTANCIA",
+  "database": "PillTracker"
+}
 ```
+
+> ⚠️ `config.json` está no `.gitignore` — suas credenciais nunca vão para o repositório.
 
 ---
 
-## ⚙️ Modo sem backend
+## 🗄️ Banco de dados
 
-Se o backend não estiver disponível, o app usa **localStorage** automaticamente.
-Isso é útil para testar sem banco de dados — basta abrir o `index.html` no navegador.
+Execute o arquivo `PillTracker.sql` no Azure Data Studio ou SSMS para criar o banco e as tabelas:
+
+```bash
+# No SSMS ou Azure Data Studio, abra e execute:
+PillTracker.sql
+```
+
+**Tabelas criadas:**
+
+| Tabela | Descrição |
+|--------|-----------|
+| `Trackers` | Comprimidos cadastrados (nome, ícone, cor, meta diária) |
+| `PillLogs` | Registro diário de doses por tracker |
 
 ---
 
@@ -87,8 +92,30 @@ Isso é útil para testar sem banco de dados — basta abrir o `index.html` no n
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| GET | `/api/trackers` | Lista todos + count de hoje |
-| POST | `/api/trackers` | Cria novo tracker |
-| DELETE | `/api/trackers/:id` | Remove tracker |
-| POST | `/api/trackers/:id/take` | Registra uma dose hoje |
-| GET | `/api/trackers/:id/history` | Histórico dos últimos 7 dias |
+| `GET` | `/api/status` | Status da conexão com o banco |
+| `POST` | `/api/reconnect` | Reconectar com novas credenciais |
+| `GET` | `/api/trackers` | Lista todos os trackers + doses de hoje |
+| `POST` | `/api/trackers` | Cria novo tracker |
+| `PUT` | `/api/trackers/:id` | Edita tracker existente |
+| `DELETE` | `/api/trackers/:id` | Remove tracker |
+| `POST` | `/api/trackers/:id/take` | Registra uma dose (incrementa) |
+| `POST` | `/api/trackers/:id/remove` | Remove uma dose (decrementa) |
+| `GET` | `/api/trackers/:id/history` | Histórico dos últimos 7 dias |
+
+---
+
+## 📴 Modo offline
+
+Se o backend não estiver acessível, o sistema usa `localStorage` automaticamente como fallback. Os dados ficam salvos no navegador até que a conexão com o banco seja restabelecida.
+
+---
+
+## 📋 .gitignore
+
+```
+*.zip
+*.7z
+*.gz
+config.json
+node_modules
+```
