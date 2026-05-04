@@ -16,6 +16,12 @@ app.use(express.static(path.join(__dirname, 'frontend')));
 const CONFIG_FILE = path.join(__dirname, 'config.json');
 
 function loadConfig() {
+  const defaults = {
+    user:     process.env.DB_USER     || 'sa',
+    password: process.env.DB_PASSWORD || '',
+    server:   process.env.DB_SERVER   || 'localhost',
+    database: process.env.DB_NAME     || 'PillTracker',
+  };
   try {
     if (fs.existsSync(CONFIG_FILE)) {
       const saved = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
@@ -25,12 +31,14 @@ function loadConfig() {
   } catch (e) {
     console.log('Erro ao ler config.json, usando padrões.');
   }
-  return {
-    user:     process.env.DB_USER     || 'sa',
-    password: process.env.DB_PASSWORD || '',
-    server:   process.env.DB_SERVER   || 'localhost',
-    database: process.env.DB_NAME     || 'PillTracker',
-  };
+  // Primeira execução: gera o config.json com os valores padrão
+  try {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaults, null, 2), 'utf8');
+    console.log('config.json criado com valores padrão — edite as credenciais pelo site ou direto no arquivo.');
+  } catch (e) {
+    console.error('Não foi possível criar config.json:', e.message);
+  }
+  return defaults;
 }
 
 function saveConfig(cfg) {
@@ -216,6 +224,20 @@ app.post('/api/trackers/:id/take', async (req, res) => {
       .input('today', sql.Date, today)
       .query('SELECT count FROM PillLogs WHERE tracker_id = @id AND log_date = @today');
     res.json({ count: result.recordset[0]?.count || 1 });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// GET histórico do ano inteiro para o heatmap
+app.get('/api/trackers/:id/history/year', async (req, res) => {
+  if (!pool) return res.status(503).json({ error: 'DB não disponível' });
+  try {
+    const result = await pool.request()
+      .input('id', sql.Int, req.params.id)
+      .query(`SELECT log_date, count FROM PillLogs
+              WHERE tracker_id = @id
+                AND log_date >= DATEADD(day, -364, CAST(GETDATE() AS DATE))
+              ORDER BY log_date`);
+    res.json(result.recordset);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 

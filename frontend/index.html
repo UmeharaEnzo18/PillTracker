@@ -684,6 +684,74 @@
       width: 56px; height: 56px; border-radius: 14px; font-size: 28px;
       display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;
     }
+
+    /* ── CALENDAR BUTTON ── */
+    .cal-open-btn {
+      background: none; border: 1px solid var(--border); color: var(--text-muted);
+      border-radius: 8px; padding: 6px 8px; cursor: pointer;
+      transition: all 0.2s; display: flex; align-items: center;
+    }
+    .cal-open-btn:hover { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
+
+    /* ── CALENDAR MODAL ── */
+    .cal-modal {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 20px; padding: 28px; width: 95%; max-width: 760px;
+      animation: slideUp 0.3s cubic-bezier(.3,1,.4,1);
+      max-height: 90vh; overflow-y: auto;
+    }
+    .cal-modal::-webkit-scrollbar { width: 4px; }
+    .cal-modal::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    .cal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .cal-icon { font-size: 28px; }
+    .cal-title { font-family: 'DM Serif Display', serif; font-size: 20px; }
+    .cal-sub { color: var(--text-muted); font-size: 13px; margin-top: 2px; }
+    .cal-close { margin-left: auto; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 18px; padding: 4px 8px; border-radius: 8px; transition: color 0.2s; }
+    .cal-close:hover { color: var(--text); }
+
+    /* Legend */
+    .cal-legend { display: flex; align-items: center; gap: 6px; margin-bottom: 16px; font-size: 11px; color: var(--text-muted); }
+    .cal-legend-box { width: 12px; height: 12px; border-radius: 3px; }
+
+    /* Heatmap grid */
+    .cal-months { display: flex; flex-direction: column; gap: 0; }
+    .cal-month-row { display: flex; gap: 0; }
+    .cal-month-label { font-size: 10px; color: var(--text-muted); width: 32px; padding-top: 2px; flex-shrink: 0; }
+    .cal-weeks { display: flex; gap: 3px; }
+    .cal-week { display: flex; flex-direction: column; gap: 3px; }
+    .cal-cell {
+      width: 12px; height: 12px; border-radius: 3px;
+      background: var(--surface2); cursor: pointer;
+      transition: transform 0.1s, outline 0.1s;
+      position: relative;
+    }
+    .cal-cell:hover { transform: scale(1.4); outline: 1.5px solid var(--accent); z-index: 1; }
+    .cal-cell.today { outline: 1.5px solid var(--accent); }
+
+    /* Day label column */
+    .cal-day-labels { display: flex; flex-direction: column; gap: 3px; padding-top: 20px; margin-right: 4px; }
+    .cal-day-label { font-size: 9px; color: var(--text-muted); height: 12px; line-height: 12px; }
+
+    .cal-grid-wrap { display: flex; overflow-x: auto; padding-bottom: 4px; }
+    .cal-grid-wrap::-webkit-scrollbar { height: 4px; }
+    .cal-grid-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    /* Day detail panel */
+    .cal-detail {
+      margin-top: 20px; padding: 16px; border-radius: 12px;
+      background: var(--surface2); border: 1px solid var(--border);
+      min-height: 72px; transition: all 0.2s;
+    }
+    .cal-detail-date { font-size: 13px; font-weight: 600; margin-bottom: 6px; }
+    .cal-detail-count { font-size: 28px; font-weight: 700; font-family: 'DM Serif Display', serif; }
+    .cal-detail-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .cal-detail-bar { height: 6px; border-radius: 99px; background: var(--border); margin-top: 10px; overflow: hidden; }
+    .cal-detail-fill { height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+    .cal-stats { display: flex; gap: 16px; margin-top: 16px; }
+    .cal-stat { flex: 1; background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+    .cal-stat-val { font-family: 'DM Serif Display', serif; font-size: 22px; }
+    .cal-stat-label { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
   </style>
 </head>
 <body>
@@ -984,10 +1052,18 @@
           <button class="edit-confirm-btn" onclick="toggleDoseEdit(${JSON.stringify(id)}, true)" title="Concluir edição">✓</button>
         </div>
         <div class="take-label" id="takeLabel">${done ? 'Concluído!' : 'Registrar dose'}</div>
-      </div>
+      </div> 
 
       <div class="history-card">
-        <div class="history-title">Últimos 7 Dias</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="history-title" style="margin-bottom:0">Últimos 7 Dias</div>
+          <button class="cal-open-btn" onclick="openCalendar(${JSON.stringify(id)})" title="Ver calendário completo">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="1.5" y="2.5" width="13" height="12" rx="2"/>
+              <path d="M1.5 6.5h13M5 1v3M11 1v3"/>
+            </svg>
+          </button>
+        </div>
         <div class="history-bars">${bars}</div>
       </div>
     `;
@@ -1177,6 +1253,180 @@
       closeDoseModal();
     }
   });
+
+  // ── CALENDAR HEATMAP ─────────────────────────────────────────────────────────
+  let calTrackerId = null;
+  let calLogs = {};
+
+  async function openCalendar(id) {
+    calTrackerId = id;
+    const t = trackers.find(x => x.id == id);
+    if (!t) return;
+
+    document.getElementById('calIcon').textContent  = t.icon;
+    document.getElementById('calTitle').textContent = t.name;
+    document.getElementById('calSub').textContent   = `Meta: ${t.daily_goal}x/dia · Histórico anual`;
+    document.getElementById('calOverlay').classList.remove('hidden');
+    document.getElementById('calGrid').innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:20px">Carregando...</div>';
+    document.getElementById('calDetail').innerHTML = '<div style="color:var(--text-muted);font-size:13px">Clique em um dia para ver o detalhe</div>';
+    document.getElementById('calStats').innerHTML = '';
+
+    // Fetch year data
+    let logs = {};
+    if (useAPI) {
+      try {
+        const r = await fetch(`${API}/trackers/${id}/history/year`);
+        const data = await r.json();
+        data.forEach(h => {
+          const raw = h.log_date instanceof Date ? h.log_date.toISOString().split('T')[0] : String(h.log_date).split('T')[0];
+          logs[raw] = h.count;
+        });
+      } catch {}
+    } else {
+      logs = t.logs || {};
+    }
+    calLogs = logs;
+    renderHeatmap(t, logs);
+  }
+
+  function closeCalendar() {
+    document.getElementById('calOverlay').classList.add('hidden');
+  }
+
+  function renderHeatmap(t, logs) {
+    const goal   = t.daily_goal;
+    const color  = t.color;
+    const today  = new Date();
+    today.setHours(12, 0, 0, 0);
+
+    // Start from 364 days ago, aligned to Sunday
+    const start = new Date(today);
+    start.setDate(start.getDate() - 364);
+    // Rewind to Sunday
+    start.setDate(start.getDate() - start.getDay());
+
+    // Build weeks array
+    const weeks = [];
+    let week = [];
+    const cur = new Date(start);
+    while (cur <= today) {
+      week.push(new Date(cur));
+      if (week.length === 7) { weeks.push(week); week = []; }
+      cur.setDate(cur.getDate() + 1);
+    }
+    if (week.length) { while (week.length < 7) { week.push(null); } weeks.push(week); }
+
+    // Month labels
+    const monthEl = document.getElementById('calMonthLabels');
+    monthEl.innerHTML = '';
+    const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+    let lastMonth = -1;
+    weeks.forEach((w, wi) => {
+      const firstValid = w.find(d => d);
+      const lbl = document.createElement('div');
+      lbl.style.cssText = 'width:12px;font-size:9px;color:var(--text-muted);flex-shrink:0;text-align:center';
+      if (firstValid && firstValid.getMonth() !== lastMonth && firstValid.getDate() <= 7) {
+        lbl.textContent = months[firstValid.getMonth()];
+        lastMonth = firstValid.getMonth();
+      }
+      monthEl.appendChild(lbl);
+      if (wi < weeks.length - 1) { const gap = document.createElement('div'); gap.style.width = '3px'; monthEl.appendChild(gap); }
+    });
+
+    // Grid
+    const grid = document.getElementById('calGrid');
+    grid.innerHTML = '';
+    const todayStr = today.toISOString().split('T')[0];
+    let totalDoses = 0, daysLogged = 0, streak = 0, maxStreak = 0, curStreak = 0;
+
+    // Compute streak (backwards from today)
+    const allDays = [];
+    const c2 = new Date(today);
+    for (let i = 0; i < 365; i++) {
+      allDays.unshift(c2.toISOString().split('T')[0]);
+      c2.setDate(c2.getDate() - 1);
+    }
+    let inStreak = true;
+    allDays.reverse().forEach(d => {
+      if ((logs[d] || 0) >= goal) { curStreak++; maxStreak = Math.max(maxStreak, curStreak); }
+      else curStreak = 0;
+    });
+    // Current streak (from today backwards)
+    curStreak = 0;
+    for (let i = allDays.length - 1; i >= 0; i--) {
+      if ((logs[allDays[i]] || 0) >= goal) curStreak++;
+      else break;
+    }
+
+    weeks.forEach(w => {
+      const weekDiv = document.createElement('div');
+      weekDiv.className = 'cal-week';
+      w.forEach(d => {
+        const cell = document.createElement('div');
+        cell.className = 'cal-cell';
+        if (!d || d > today) {
+          cell.style.background = 'transparent';
+          cell.style.cursor = 'default';
+        } else {
+          const ds = d.toISOString().split('T')[0];
+          const count = logs[ds] || 0;
+          const pct   = goal > 0 ? Math.min(count / goal, 1) : 0;
+          if (count > 0) { totalDoses += count; daysLogged++; }
+          // Color intensity
+          cell.style.background = count === 0
+            ? 'var(--surface2)'
+            : pct >= 1
+              ? color
+              : `color-mix(in srgb, ${color} ${Math.round(pct * 80 + 20)}%, var(--surface2))`;
+          if (ds === todayStr) cell.classList.add('today');
+          cell.title = ds;
+          cell.addEventListener('click', () => showDayDetail(ds, count, goal, color, t.name));
+        }
+        weekDiv.appendChild(cell);
+      });
+      grid.appendChild(weekDiv);
+    });
+
+    // Legend
+    const legend = document.getElementById('calLegend');
+    legend.innerHTML = `
+      <span>Menos</span>
+      <div class="cal-legend-box" style="background:var(--surface2)"></div>
+      <div class="cal-legend-box" style="background:color-mix(in srgb,${color} 35%,var(--surface2))"></div>
+      <div class="cal-legend-box" style="background:color-mix(in srgb,${color} 60%,var(--surface2))"></div>
+      <div class="cal-legend-box" style="background:color-mix(in srgb,${color} 80%,var(--surface2))"></div>
+      <div class="cal-legend-box" style="background:${color}"></div>
+      <span>Mais</span>
+    `;
+
+    // Stats
+    const avg = daysLogged > 0 ? (totalDoses / daysLogged).toFixed(1) : '0';
+    document.getElementById('calStats').innerHTML = `
+      <div class="cal-stat"><div class="cal-stat-val" style="color:${color}">${totalDoses}</div><div class="cal-stat-label">Doses totais</div></div>
+      <div class="cal-stat"><div class="cal-stat-val" style="color:${color}">${daysLogged}</div><div class="cal-stat-label">Dias registrados</div></div>
+      <div class="cal-stat"><div class="cal-stat-val" style="color:${color}">${curStreak}</div><div class="cal-stat-label">Sequência atual</div></div>
+      <div class="cal-stat"><div class="cal-stat-val" style="color:${color}">${maxStreak}</div><div class="cal-stat-label">Maior sequência</div></div>
+    `;
+  }
+
+  function showDayDetail(dateStr, count, goal, color, name) {
+    const [y, m, d] = dateStr.split('-');
+    const label = `${d}/${m}/${y}`;
+    const pct   = goal > 0 ? Math.min((count / goal) * 100, 100) : 0;
+    const done  = count >= goal;
+    const detail = document.getElementById('calDetail');
+    detail.style.borderColor = done ? color : 'var(--border)';
+    detail.innerHTML = `
+      <div class="cal-detail-date">${label}</div>
+      <div style="display:flex;align-items:flex-end;gap:8px">
+        <div class="cal-detail-count" style="color:${color}">${count}</div>
+        <div style="color:var(--text-muted);font-size:18px;margin-bottom:4px">/ ${goal}</div>
+        ${done ? `<div style="color:${color};font-size:12px;font-weight:600;margin-bottom:6px;margin-left:4px">✓ Meta atingida</div>` : ''}
+      </div>
+      <div class="cal-detail-label">${count === 0 ? 'Nenhuma dose registrada' : `${count} dose${count > 1 ? 's' : ''} de ${name}`}</div>
+      <div class="cal-detail-bar"><div class="cal-detail-fill" style="width:${pct}%;background:${color}"></div></div>
+    `;
+  }
 
   // ── DOSE EDIT MODE ─────────────────────────────────────────────────────────
   let doseEditActive = false;
@@ -1485,6 +1735,44 @@
     <div class="btn-row" id="statusBtns">
       <button class="btn btn-secondary" onclick="closeStatusModal()">Fechar</button>
     </div>
+  </div>
+</div>
+
+<!-- MODAL: CALENDÁRIO HEATMAP -->
+<div class="overlay hidden" id="calOverlay">
+  <div class="cal-modal">
+    <div class="cal-header">
+      <div class="cal-icon" id="calIcon">💊</div>
+      <div>
+        <div class="cal-title" id="calTitle">Calendário</div>
+        <div class="cal-sub" id="calSub">Histórico anual de doses</div>
+      </div>
+      <button class="cal-close" onclick="closeCalendar()">✕</button>
+    </div>
+
+    <div class="cal-legend" id="calLegend"></div>
+
+    <div class="cal-grid-wrap">
+      <div class="cal-day-labels">
+        <div class="cal-day-label"></div>
+        <div class="cal-day-label">Seg</div>
+        <div class="cal-day-label"></div>
+        <div class="cal-day-label">Qua</div>
+        <div class="cal-day-label"></div>
+        <div class="cal-day-label">Sex</div>
+        <div class="cal-day-label"></div>
+      </div>
+      <div>
+        <div id="calMonthLabels" style="display:flex;gap:3px;margin-bottom:4px;margin-left:0"></div>
+        <div id="calGrid" style="display:flex;gap:3px"></div>
+      </div>
+    </div>
+
+    <div class="cal-detail" id="calDetail">
+      <div style="color:var(--text-muted);font-size:13px">Clique em um dia para ver o detalhe</div>
+    </div>
+
+    <div class="cal-stats" id="calStats"></div>
   </div>
 </div>
 
